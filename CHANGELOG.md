@@ -1,0 +1,95 @@
+# Changelog
+
+All notable changes to datamend are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+datamend follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.1.0] — 2026-05-14
+
+### Added
+
+- **Pillar 1: AutoRepair** — fully automated data repair engine
+  - Null imputation (mean, median, mode — auto-selected by skewness)
+  - Outlier detection via modified Z-score (MAD) and IQR clipping
+  - Type mismatch detection and coercion (object → numeric, object → datetime)
+  - Exact duplicate removal
+  - Near-duplicate detection via Jaccard similarity on string columns
+  - Encoding corruption (mojibake) detection and repair
+  - Inconsistent category normalisation (Male/male/M → canonical)
+  - Whitespace and hidden character stripping
+  - Unit mismatch flagging (CV-based bimodal detection)
+  - Chunked processing for datasets above 10M rows
+  - Fast mode with intelligent sampling
+  - Plugin support (phase 8 of the repair pipeline)
+  - Full RepairReport with before/after MendScore
+
+- **Pillar 2: DataContract** — data schema and statistics contract
+  - One-line contract generation from any reference DataFrame
+  - Schema validation (missing columns, extra columns, dtype compatibility)
+  - Null rate enforcement per column
+  - Value range enforcement for numeric columns
+  - Cardinality validation for categorical columns (unseen values)
+  - Distribution drift detection via KS test
+  - JSON save / load for contract persistence
+  - Human-readable and machine-readable (JSON) ContractReport
+  - `raise_on_failure` mode for hard pipeline gates
+
+- **Pillar 3: DriftRadar** — statistical drift detection
+  - PSI (Population Stability Index) for numeric features
+  - Kolmogorov-Smirnov test for continuous features
+  - Chi-square test for categorical features
+  - Jensen-Shannon Divergence for all feature types
+  - Composite MendScore (0–100 drift urgency)
+  - Column-level severity: none / low / medium / high / critical
+  - Full DriftReport with per-column attribution
+
+- **Pillar 4: FailureTrace** — model failure root-cause attribution
+  - Works with sklearn, XGBoost, LightGBM, PyTorch (any sklearn-compatible API)
+  - Direct feature importance extraction from tree models
+  - Surrogate DecisionTree for black-box models
+  - Row-level suspicion scoring (0–100)
+  - Column-level importance = model contribution + data quality contribution
+  - Ground truth attribution when true labels are available
+  - TraceReport with top-K failure columns and suspicious row list
+
+- **MendPipeline** — unified four-pillar pipeline
+  - `fit(train_df)` + `transform(prod_df)` interface
+  - `fit_transform()` convenience method
+  - Weighted overall MendScore across all four pillars
+  - Per-pillar enable/disable flags
+  - PipelineResult with all four reports and repaired DataFrame
+
+- **MendReport** — HTML dashboard
+  - Self-contained single-file dark-mode dashboard
+  - Cards for all four pillars with colour-coded scores
+  - Action tables, violation tables, drift tables, attribution tables
+  - `to_html(path)` save and `serve(port)` live server
+
+- **CLI** — full command-line interface
+  - `datamend repair` — repair any CSV/Parquet/JSON/Excel file
+  - `datamend contract` — generate DataContract from a file
+  - `datamend validate` — validate a file against a saved contract
+  - `datamend drift` — detect drift between two files
+  - `datamend score` — print MendScore for any file
+  - `datamend dashboard` — serve HTML dashboard from a JSON report
+  - `datamend plugins` — list registered plugins
+
+- **Plugin system**
+  - `BaseRepairPlugin`, `BaseValidatorPlugin`, `BaseDriftDetectorPlugin`, `BaseTracerPlugin`
+  - `PluginRegistry` with auto-discovery from `datamend.plugins` entry-point group
+  - `@register_plugin` decorator for programmatic registration
+
+- **Integrations**
+  - MLflow: `log_repair`, `log_contract`, `log_drift`, `log_pipeline_result`
+  - Weights & Biases: `log_repair`, `log_contract`, `log_drift`, `log_pipeline_result`
+  - DVC: `save_repair_metrics`, `save_drift_metrics`, `save_pipeline_result`
+
+- **Test suite** — 90%+ coverage across all four pillars
+- **MkDocs documentation site** with full API reference, tutorials, and plugin guide
+- **GitHub Actions** CI/CD — tests on Windows, macOS, Linux, Python 3.9–3.12
+- **GitHub Actions** publish workflow — auto-publish to PyPI on tagged release
+
+[0.1.0]: https://github.com/vignesh2027/datamend.py/releases/tag/v0.1.0

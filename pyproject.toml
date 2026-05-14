@@ -1,0 +1,116 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datamend"
+version = "0.1.0"
+description = "The unified data repair, validation, drift detection, and failure tracing library for production ML"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Vignesh", email = "applemacbook6sep2004@gmail.com" }]
+keywords = [
+    "data-quality", "data-cleaning", "drift-detection", "data-validation",
+    "machine-learning", "mlops", "data-science", "pandas", "autorepair",
+    "data-contracts", "feature-drift", "model-debugging",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=1.5.0",
+    "numpy>=1.23.0",
+    "scipy>=1.9.0",
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "jinja2>=3.1.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+sklearn = ["scikit-learn>=1.2.0"]
+xgboost = ["xgboost>=1.7.0"]
+lightgbm = ["lightgbm>=3.3.0"]
+torch = ["torch>=2.0.0"]
+polars = ["polars>=0.19.0"]
+mlflow = ["mlflow>=2.0.0"]
+wandb = ["wandb>=0.15.0"]
+dvc = ["dvc>=3.0.0"]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "twine>=4.0.0",
+    "build>=1.0.0",
+    "scikit-learn>=1.2.0",
+    "xgboost>=1.7.0",
+]
+all = [
+    "scikit-learn>=1.2.0",
+    "xgboost>=1.7.0",
+    "lightgbm>=3.3.0",
+    "torch>=2.0.0",
+    "polars>=0.19.0",
+    "mlflow>=2.0.0",
+    "wandb>=0.15.0",
+    "dvc>=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/vignesh2027/datamend.py"
+Documentation = "https://vignesh2027.github.io/datamend.py"
+Repository = "https://github.com/vignesh2027/datamend.py"
+"Bug Tracker" = "https://github.com/vignesh2027/datamend.py/issues"
+Changelog = "https://github.com/vignesh2027/datamend.py/blob/main/CHANGELOG.md"
+
+[project.scripts]
+datamend = "datamend.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["datamend*"]
+
+[tool.setuptools.package-data]
+datamend = ["py.typed", "templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=datamend --cov-report=term-missing --cov-report=xml -v"
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "ANN", "B", "C4", "SIM"]
+ignore = ["ANN101", "ANN102"]
+
+[tool.coverage.run]
+source = ["datamend"]
+omit = ["tests/*", "datamend/integrations/*"]

@@ -1,0 +1,76 @@
+site_name: datamend
+site_description: Repair. Validate. Detect Drift. Trace Failures. The unified data quality library for production ML.
+site_author: Vignesh
+site_url: https://vignesh2027.github.io/datamend.py
+repo_url: https://github.com/vignesh2027/datamend.py
+repo_name: vignesh2027/datamend.py
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: tutorials/installation.md
+    - Quickstart: tutorials/quickstart.md
+    - CLI Guide: tutorials/cli.md
+  - API Reference:
+    - AutoRepair: api/repair.md
+    - DataContract: api/contract.md
+    - DriftRadar: api/drift.md
+    - FailureTrace: api/trace.md
+    - MendPipeline: api/pipeline.md
+    - MendReport: api/report.md
+  - Plugin Guide: plugins.md
+  - Integrations: integrations.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
