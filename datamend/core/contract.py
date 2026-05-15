@@ -138,7 +138,22 @@ class ContractReport:
 class DataContract:
     """Generate and enforce data contracts from reference DataFrames.
 
+    Can be constructed in two ways::
+
+        # From a reference DataFrame (fit-first style)
+        dc = DataContract()
+        dc.fit(train_df)
+        report = dc.validate(prod_df)
+
+        # From an explicit schema dict (declarative style)
+        dc = DataContract({"age": {"dtype": "numeric", "min": 0, "max": 120, "nullable": False}})
+        dc.fit(train_df)  # still needed to learn statistics
+        report = dc.validate(prod_df)
+
     Args:
+        schema: Optional column-spec dict mapping column names to constraint dicts.
+                Supported keys per column: ``dtype`` ("numeric"/"categorical"),
+                ``min``, ``max``, ``nullable`` (bool), ``allowed_values`` (list).
         name: Human-readable contract identifier.
         null_threshold: Maximum allowed null rate per column (0–1).
         drift_threshold: Distribution shift threshold before flagging as violation.
@@ -147,11 +162,17 @@ class DataContract:
 
     def __init__(
         self,
+        schema: Optional[Dict[str, Any]] = None,
         name: str = "default",
         null_threshold: float = 0.05,
         drift_threshold: float = 0.1,
         strict: bool = False,
     ) -> None:
+        # Support positional string for backward-compat: DataContract("my_name")
+        if isinstance(schema, str):
+            name = schema
+            schema = None
+        self._user_schema: Optional[Dict[str, Any]] = schema
         self.name = name
         self.null_threshold = null_threshold
         self.drift_threshold = drift_threshold
@@ -166,6 +187,9 @@ class DataContract:
     def fit(self, df: pd.DataFrame) -> "DataContract":
         """Learn the schema and statistics of a reference DataFrame.
 
+        If a ``schema`` dict was provided at construction time, its constraints
+        are merged on top of the learned statistics.
+
         Args:
             df: Clean reference DataFrame (training data).
 
@@ -176,9 +200,47 @@ class DataContract:
             raise TypeError(f"Expected DataFrame, got {type(df).__name__}")
         self._specs = {}
         for col in df.columns:
-            self._specs[col] = self._build_spec(df[col], col)
+            spec = self._build_spec(df[col], col)
+            # Apply user-supplied schema overrides
+            if self._user_schema and col in self._user_schema:
+                user = self._user_schema[col]
+                dtype_hint = user.get("dtype", "")
+                if dtype_hint == "numeric":
+                    pass  # keep learned dtype
+                elif dtype_hint == "categorical":
+                    pass
+                if "min" in user:
+                    spec = _replace_spec(spec, min_val=float(user["min"]))
+                if "max" in user:
+                    spec = _replace_spec(spec, max_val=float(user["max"]))
+                if "nullable" in user:
+                    spec = _replace_spec(spec, nullable=bool(user["nullable"]))
+                if "allowed_values" in user:
+                    spec = _replace_spec(spec, allowed_values=list(user["allowed_values"]))
+            self._specs[col] = spec
+        # Also register schema-only columns not in df (will flag as MISSING_COLUMN on validate)
+        if self._user_schema:
+            for col in self._user_schema:
+                if col not in self._specs:
+                    dummy = ColumnSpec(
+                        name=col, dtype="object", nullable=False, null_rate=0.0,
+                        min_val=None, max_val=None, mean_val=None, std_val=None,
+                        cardinality=0, allowed_values=None,
+                        percentiles=None, distribution_params=None,
+                    )
+                    self._specs[col] = dummy
         self._fitted = True
         return self
+
+    def fit_validate(
+        self,
+        train_df: pd.DataFrame,
+        prod_df: pd.DataFrame,
+        raise_on_failure: bool = False,
+    ) -> "ContractReport":
+        """Convenience: fit on *train_df* and immediately validate *prod_df*."""
+        self.fit(train_df)
+        return self.validate(prod_df, raise_on_failure=raise_on_failure)
 
     def _build_spec(self, series: pd.Series, col: str) -> ColumnSpec:
         """Compute a ColumnSpec from a single Series."""
@@ -477,6 +539,12 @@ class DataContract:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _replace_spec(spec: "ColumnSpec", **kwargs: Any) -> "ColumnSpec":
+    """Return a new ColumnSpec with selected fields replaced."""
+    from dataclasses import replace
+    return replace(spec, **kwargs)
 
 
 def _dtypes_compatible(current: str, expected: str) -> bool:

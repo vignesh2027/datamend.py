@@ -22,7 +22,7 @@ import pandas as pd
 import numpy as np
 from typing import Any, Optional
 
-__version__ = "0.1.0"
+__version__ = "1.1.0"
 __author__ = "Vignesh"
 __license__ = "MIT"
 

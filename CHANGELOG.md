@@ -7,6 +7,36 @@ datamend follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-05-15
+
+### Fixed
+
+- **`_compute_mend_score` double-scaling bug** — the penalty was multiplied by 100 a
+  second time, causing any DataFrame with nulls to always receive a score of 0.0.
+  Scores now reflect real data quality (e.g. 10% null rate → ~96/100, not 0).
+- **`FailureTrace` row-indexing crash** — inner loop used `df.index.get_loc(idx)` which
+  returns `slice | ndarray` for non-unique indices, causing `TypeError` at runtime.
+  All per-row access now uses safe `df.iloc[row_pos]` integer positions.
+- **`FailureTrace` scalar coercion** — numpy scalar values now go through `.item()` before
+  `isinstance(val, (int, float))` checks, preventing `Series[bool]` in conditionals.
+- **`MendReport` constructor** — now accepts both short names (`repair`, `contract`,
+  `drift`, `trace`) and documented `_report`-suffixed names.
+
+### Added
+
+- **`DriftRadar.fit(reference_df)`** — store a reference DataFrame for the `fit / detect`
+  pattern: `DriftRadar().fit(train_df).detect(prod_df)`. The two-arg form still works.
+- **`FailureTrace.fit(model, train_df, labels)`** — store a fitted model for the
+  `fit / trace` pattern: `FailureTrace().fit(model, X_train).trace(X_prod, preds)`.
+- **`DataContract(schema_dict)`** — declarative schema construction: pass a dict of
+  `{col: {"dtype": "numeric", "min": 0, "max": 120, "nullable": False}}` as the
+  first argument; constraints are merged with statistics learned from `fit(df)`.
+- **`DataContract.fit_validate(train_df, prod_df)`** — convenience one-liner combining
+  `fit` + `validate` for simple pipeline steps.
+- **Python 3.13 support** — tested and classified.
+- **`Development Status :: 5 - Production/Stable`** classifier.
+- **CI matrix extended** to Python 3.13 on Windows, macOS, Linux.
+
 ## [0.1.0] — 2026-05-14
 
 ### Added

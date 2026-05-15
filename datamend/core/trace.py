@@ -196,8 +196,9 @@ def _row_data_quality_score(row: pd.Series, global_stats: Dict[str, Any]) -> flo
     issues = 0
     checks = 0
 
-    for col in row.index:
-        val = row[col]
+    for i, col in enumerate(row.index):
+        raw = row.iloc[i]
+        val = raw.item() if hasattr(raw, "item") else raw
         stats_col = global_stats.get(str(col), {})
         checks += 1
 
@@ -205,7 +206,7 @@ def _row_data_quality_score(row: pd.Series, global_stats: Dict[str, Any]) -> flo
             issues += 1
             continue
 
-        if pd.api.types.is_numeric_dtype(type(val)) and isinstance(val, (int, float)):
+        if isinstance(val, (int, float)):
             mean_v = stats_col.get("mean")
             std_v = stats_col.get("std")
             if mean_v is not None and std_v is not None and std_v > 0:
@@ -257,6 +258,35 @@ class FailureTrace:
     def __init__(self, top_k: int = 10, verbose: bool = True) -> None:
         self.top_k = top_k
         self.verbose = verbose
+        self._model: Optional[Any] = None
+        self._train_df: Optional[pd.DataFrame] = None
+        self._train_labels: Optional[Any] = None
+
+    def fit(
+        self,
+        model: Any,
+        train_df: pd.DataFrame,
+        train_labels: Optional[Any] = None,
+    ) -> "FailureTrace":
+        """Store a fitted model and optional training data for later tracing.
+
+        Enables the ``fit / trace`` pattern::
+
+            tracer = FailureTrace().fit(model, X_train, y_train)
+            report = tracer.trace(X_prod, predictions)
+
+        Args:
+            model: Any sklearn-compatible, XGBoost, LightGBM, or PyTorch model.
+            train_df: Training DataFrame (used as reference for anomaly scoring).
+            train_labels: Optional training labels.
+
+        Returns:
+            Self, for method chaining.
+        """
+        self._model = model
+        self._train_df = train_df
+        self._train_labels = train_labels
+        return self
 
     def trace(
         self,
@@ -330,21 +360,23 @@ class FailureTrace:
 
         # --- Per-row suspicion scoring ---
         row_failures: List[RowFailure] = []
-        for idx in df.index:
-            row = df.loc[idx]
+        index_list = list(df.index)
+        for row_pos, idx in enumerate(index_list):
+            row = df.iloc[row_pos]  # always use integer position to avoid get_loc issues
             dq_score = _row_data_quality_score(row, global_stats)
 
             # Build row-level column anomaly scores
             col_anomalies: Dict[str, float] = {}
             for i, col in enumerate(df.columns):
-                val = row[col]
+                val = row.iloc[i]
                 score = 0.0
-                if pd.isna(val):
+                scalar_val = val.item() if hasattr(val, "item") else val
+                if pd.isna(scalar_val):
                     score = 1.0
-                elif pd.api.types.is_numeric_dtype(type(val)) and isinstance(val, (int, float)):
+                elif isinstance(scalar_val, (int, float)):
                     col_stats = global_stats.get(str(col))
                     if col_stats and col_stats["std"] > 0:
-                        z = abs((val - col_stats["mean"]) / col_stats["std"])
+                        z = abs((scalar_val - col_stats["mean"]) / col_stats["std"])
                         score = min(z / 4.0, 1.0)
                 col_anomalies[str(col)] = score
 
@@ -355,17 +387,14 @@ class FailureTrace:
 
             model_conf = None
             model_suspicion = 0.0
-            if confidences is not None:
-                row_idx_pos = df.index.get_loc(idx)
-                if row_idx_pos < len(confidences):
-                    model_conf = float(confidences[row_idx_pos])
-                    model_suspicion = 1.0 - model_conf
+            if confidences is not None and row_pos < len(confidences):
+                model_conf = float(confidences[row_pos])
+                model_suspicion = 1.0 - model_conf
 
             dq_suspicion = 1.0 - dq_score / 100.0
             suspicion_score = (0.5 * dq_suspicion + 0.3 * weighted_anomaly + 0.2 * model_suspicion) * 100
 
             if ground_truth_arr is not None:
-                row_pos = df.index.get_loc(idx)
                 if row_pos < len(ground_truth_arr) and row_pos < len(predictions_arr):
                     error = abs(
                         float(predictions_arr[row_pos]) - float(ground_truth_arr[row_pos])

@@ -36,11 +36,16 @@ class MendReport:
         drift: Optional[DriftReport] = None,
         trace: Optional[TraceReport] = None,
         title: str = "datamend Health Report",
+        # also accept the _report-suffixed names used in docs / README
+        repair_report: Optional[RepairReport] = None,
+        contract_report: Optional[ContractReport] = None,
+        drift_report: Optional[DriftReport] = None,
+        trace_report: Optional[TraceReport] = None,
     ) -> None:
-        self.repair = repair
-        self.contract = contract
-        self.drift = drift
-        self.trace = trace
+        self.repair = repair or repair_report
+        self.contract = contract or contract_report
+        self.drift = drift or drift_report
+        self.trace = trace or trace_report
         self.title = title
 
     def to_dict(self) -> Dict[str, Any]:

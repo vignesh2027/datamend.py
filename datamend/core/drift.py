@@ -231,23 +231,65 @@ class DriftRadar:
         self.psi_buckets = psi_buckets
         self.alpha = alpha
         self.verbose = verbose
+        self._reference_df: Optional[pd.DataFrame] = None
+
+    def fit(self, reference_df: pd.DataFrame) -> "DriftRadar":
+        """Store a reference DataFrame for later drift comparison.
+
+        Enables the ``fit / detect`` pattern::
+
+            radar = DriftRadar().fit(train_df)
+            report = radar.detect(prod_df)
+
+        Args:
+            reference_df: Reference (training) DataFrame.
+
+        Returns:
+            Self, for method chaining.
+        """
+        if not isinstance(reference_df, pd.DataFrame):
+            raise TypeError(f"Expected DataFrame, got {type(reference_df).__name__}")
+        self._reference_df = reference_df
+        return self
 
     def detect(
         self,
         train_df: pd.DataFrame,
-        prod_df: pd.DataFrame,
+        prod_df: Optional[pd.DataFrame] = None,
         columns: Optional[List[str]] = None,
     ) -> DriftReport:
         """Detect drift between *train_df* and *prod_df*.
 
+        When called after :meth:`fit`, *prod_df* can be the only positional
+        argument and *train_df* acts as the production frame::
+
+            radar = DriftRadar().fit(reference_df)
+            report = radar.detect(prod_df)
+
+        Or both DataFrames can be passed directly::
+
+            report = DriftRadar().detect(train_df, prod_df)
+
         Args:
-            train_df: Reference (training) DataFrame.
-            prod_df: Current (production) DataFrame.
+            train_df: Reference (training) DataFrame — or production DataFrame
+                      when called after :meth:`fit`.
+            prod_df: Current (production) DataFrame. If omitted, the DataFrame
+                     stored by :meth:`fit` is used as the reference and *train_df*
+                     is treated as the production frame.
             columns: Subset of columns to analyse. Defaults to all shared columns.
 
         Returns:
             DriftReport with per-column results and overall MendScore.
         """
+        # Support fit/detect pattern: detect(prod_df) after fit(reference_df)
+        if prod_df is None:
+            if self._reference_df is None:
+                raise ValueError(
+                    "prod_df is required when no reference was stored via .fit()."
+                )
+            prod_df = train_df
+            train_df = self._reference_df
+
         if not isinstance(train_df, pd.DataFrame) or not isinstance(prod_df, pd.DataFrame):
             raise TypeError("Both arguments must be pandas DataFrames.")
 

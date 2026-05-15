@@ -137,7 +137,7 @@ def _compute_mend_score(df: pd.DataFrame) -> float:
         ws_rate = ws_issues / max(len(df) * len(obj_cols), 1)
         penalty += ws_rate * 15
 
-    return max(0.0, 100.0 - penalty * 100)
+    return max(0.0, 100.0 - penalty)
 
 
 def _is_numeric_string_column(series: pd.Series) -> bool:
@@ -449,9 +449,11 @@ class _EncodingDetector:
         result: Dict[str, int] = {}
         for col in df.select_dtypes(include=["object", "str"]).columns:
             series = df[col].dropna().astype(str)
-            count = series.apply(lambda x: bool(self._MOJIBAKE_PATTERN.search(x))).sum()
+            if len(series) == 0:
+                continue
+            count = int(series.apply(lambda x: bool(self._MOJIBAKE_PATTERN.search(x))).sum())
             if count > 0:
-                result[col] = int(count)
+                result[col] = count
         return result
 
     def fix(
@@ -535,11 +537,13 @@ class _WhitespaceDetector:
         result: Dict[str, int] = {}
         for col in df.select_dtypes(include=["object", "str"]).columns:
             series = df[col].dropna().astype(str)
-            count = series.apply(
+            if len(series) == 0:
+                continue
+            count = int(series.apply(
                 lambda x: bool(re.search(r"^\s+|\s+$", x) or self._HIDDEN_CHARS.search(x))
-            ).sum()
+            ).sum())
             if count > 0:
-                result[col] = int(count)
+                result[col] = count
         return result
 
     def fix(
