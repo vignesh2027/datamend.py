@@ -7,6 +7,22 @@ datamend follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-05-15
+
+### Fixed
+
+- **Ruff lint compliance** — removed all `ANN` annotation rules from ruff config and
+  ran auto-fix + unsafe-fixes across all modules (`integrations/`, `pipeline.py`,
+  `plugins/`, `report.py`, `core/__init__.py`, `core/contract.py`, `core/drift.py`).
+  All 386 lint errors resolved; `ruff check datamend/` now exits clean.
+- **`DriftRadar.detect` single-arg form** — when `.fit(reference_df)` has been called,
+  `detect(prod_df)` now correctly uses the stored reference without requiring two args.
+- **GitHub Actions CI workflow** — removed `ANN` select rules from ruff; CI lint step
+  now passes on Python 3.9–3.13 across Ubuntu, macOS, and Windows.
+- **GitHub Actions publish workflow** — replaced OIDC trusted publishing with
+  `twine upload` via `PYPI_API_TOKEN` secret; added artifact upload/download between
+  the `publish` and `github-release` jobs so `dist/` is available in both.
+
 ## [1.1.0] — 2026-05-15
 
 ### Fixed

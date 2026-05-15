@@ -22,7 +22,7 @@ from datamend.core.trace import FailureTrace, TraceReport
 from datamend.pipeline import MendPipeline
 from datamend.report import MendReport
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 __author__ = "Vignesh"
 __license__ = "MIT"
 

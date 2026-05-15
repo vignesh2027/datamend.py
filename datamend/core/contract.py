@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats
-
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -34,14 +33,14 @@ class ColumnSpec:
     dtype: str
     nullable: bool
     null_rate: float
-    min_val: Optional[float]
-    max_val: Optional[float]
-    mean_val: Optional[float]
-    std_val: Optional[float]
+    min_val: float | None
+    max_val: float | None
+    mean_val: float | None
+    std_val: float | None
     cardinality: int
-    allowed_values: Optional[List[Any]]  # for low-cardinality categoricals
-    percentiles: Optional[Dict[str, float]]  # p5, p25, p50, p75, p95
-    distribution_params: Optional[Dict[str, float]]  # fitted normal params
+    allowed_values: list[Any] | None  # for low-cardinality categoricals
+    percentiles: dict[str, float] | None  # p5, p25, p50, p75, p95
+    distribution_params: dict[str, float] | None  # fitted normal params
 
 
 @dataclass
@@ -61,14 +60,14 @@ class ContractReport:
     """Full result of validating a DataFrame against a DataContract."""
 
     passed: bool
-    violations: List[ContractViolation]
-    warnings: List[ContractViolation]
+    violations: list[ContractViolation]
+    warnings: list[ContractViolation]
     columns_checked: int
-    columns_failed: List[str]
+    columns_failed: list[str]
     mend_score: float
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise to plain dict."""
         return {
             "timestamp": self.timestamp,
@@ -162,7 +161,7 @@ class DataContract:
 
     def __init__(
         self,
-        schema: Optional[Dict[str, Any]] = None,
+        schema: dict[str, Any] | None = None,
         name: str = "default",
         null_threshold: float = 0.05,
         drift_threshold: float = 0.1,
@@ -172,19 +171,19 @@ class DataContract:
         if isinstance(schema, str):
             name = schema
             schema = None
-        self._user_schema: Optional[Dict[str, Any]] = schema
+        self._user_schema: dict[str, Any] | None = schema
         self.name = name
         self.null_threshold = null_threshold
         self.drift_threshold = drift_threshold
         self.strict = strict
-        self._specs: Dict[str, ColumnSpec] = {}
+        self._specs: dict[str, ColumnSpec] = {}
         self._fitted = False
 
     # ------------------------------------------------------------------
     # Fitting
     # ------------------------------------------------------------------
 
-    def fit(self, df: pd.DataFrame) -> "DataContract":
+    def fit(self, df: pd.DataFrame) -> DataContract:
         """Learn the schema and statistics of a reference DataFrame.
 
         If a ``schema`` dict was provided at construction time, its constraints
@@ -237,7 +236,7 @@ class DataContract:
         train_df: pd.DataFrame,
         prod_df: pd.DataFrame,
         raise_on_failure: bool = False,
-    ) -> "ContractReport":
+    ) -> ContractReport:
         """Convenience: fit on *train_df* and immediately validate *prod_df*."""
         self.fit(train_df)
         return self.validate(prod_df, raise_on_failure=raise_on_failure)
@@ -251,9 +250,9 @@ class DataContract:
         is_numeric = pd.api.types.is_numeric_dtype(series)
 
         min_val = max_val = mean_val = std_val = None
-        percentiles: Optional[Dict[str, float]] = None
-        distribution_params: Optional[Dict[str, float]] = None
-        allowed_values: Optional[List[Any]] = None
+        percentiles: dict[str, float] | None = None
+        distribution_params: dict[str, float] | None = None
+        allowed_values: list[Any] | None = None
 
         if is_numeric:
             clean = series.dropna()
@@ -314,9 +313,9 @@ class DataContract:
         if not self._fitted:
             raise RuntimeError("Contract has not been fitted. Call .fit(df) first.")
 
-        violations: List[ContractViolation] = []
-        warnings: List[ContractViolation] = []
-        failed_cols: List[str] = []
+        violations: list[ContractViolation] = []
+        warnings: list[ContractViolation] = []
+        failed_cols: list[str] = []
 
         # Schema: check for missing expected columns
         missing_cols = set(self._specs.keys()) - set(df.columns)
@@ -384,10 +383,10 @@ class DataContract:
         series: pd.Series,
         col: str,
         spec: ColumnSpec,
-    ) -> Tuple[List[ContractViolation], List[ContractViolation]]:
+    ) -> tuple[list[ContractViolation], list[ContractViolation]]:
         """Run all checks for a single column. Returns (violations, warnings)."""
-        violations: List[ContractViolation] = []
-        warnings: List[ContractViolation] = []
+        violations: list[ContractViolation] = []
+        warnings: list[ContractViolation] = []
 
         # Null rate check
         obs_null_rate = float(series.isnull().mean())
@@ -504,7 +503,7 @@ class DataContract:
             json.dump(data, fh, indent=2, default=str)
 
     @classmethod
-    def load(cls, path: str) -> "DataContract":
+    def load(cls, path: str) -> DataContract:
         """Load a previously saved contract from a JSON file.
 
         Args:
@@ -513,7 +512,7 @@ class DataContract:
         Returns:
             Fitted DataContract instance.
         """
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         dc = cls(
             name=data["name"],
@@ -521,7 +520,7 @@ class DataContract:
             drift_threshold=data["drift_threshold"],
             strict=data["strict"],
         )
-        specs: Dict[str, ColumnSpec] = {}
+        specs: dict[str, ColumnSpec] = {}
         for col, spec_dict in data["columns"].items():
             specs[col] = ColumnSpec(**spec_dict)
         dc._specs = specs
@@ -541,7 +540,7 @@ class DataContract:
 # ---------------------------------------------------------------------------
 
 
-def _replace_spec(spec: "ColumnSpec", **kwargs: Any) -> "ColumnSpec":
+def _replace_spec(spec: ColumnSpec, **kwargs: Any) -> ColumnSpec:
     """Return a new ColumnSpec with selected fields replaced."""
     from dataclasses import replace
     return replace(spec, **kwargs)
@@ -559,6 +558,4 @@ def _dtypes_compatible(current: str, expected: str) -> bool:
         return True  # numeric sub-type changes are compatible
     if "datetime" in current and "datetime" in expected:
         return True
-    if current in numeric_types and expected in numeric_types:
-        return True
-    return False
+    return bool(current in numeric_types and expected in numeric_types)

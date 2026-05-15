@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import abc
 import importlib.metadata
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any
 
 import pandas as pd
 
 from datamend.core.repair import RepairAction
-
 
 # ---------------------------------------------------------------------------
 # Abstract base classes
@@ -45,7 +44,7 @@ class BaseRepairPlugin(abc.ABC):
     @abc.abstractmethod
     def repair(
         self, df: pd.DataFrame
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
         """Apply the custom repair to *df*.
 
         Args:
@@ -77,8 +76,8 @@ class BaseValidatorPlugin(abc.ABC):
 
     @abc.abstractmethod
     def validate(
-        self, df: pd.DataFrame, column: str, reference_stats: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, df: pd.DataFrame, column: str, reference_stats: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Validate a column in *df*.
 
         Args:
@@ -114,7 +113,7 @@ class BaseDriftDetectorPlugin(abc.ABC):
         reference: pd.Series,
         current: pd.Series,
         column: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Detect drift between *reference* and *current* for one column.
 
         Args:
@@ -149,8 +148,8 @@ class BaseTracerPlugin(abc.ABC):
         model: Any,
         df: pd.DataFrame,
         predictions: Any,
-        ground_truth: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        ground_truth: Any | None = None,
+    ) -> list[dict[str, Any]]:
         """Score rows for suspicion of prediction failure.
 
         Args:
@@ -181,14 +180,14 @@ class PluginRegistry:
     """
 
     def __init__(self) -> None:
-        self._repair: Dict[str, Type[BaseRepairPlugin]] = {}
-        self._validators: Dict[str, Type[BaseValidatorPlugin]] = {}
-        self._drift: Dict[str, Type[BaseDriftDetectorPlugin]] = {}
-        self._tracers: Dict[str, Type[BaseTracerPlugin]] = {}
+        self._repair: dict[str, type[BaseRepairPlugin]] = {}
+        self._validators: dict[str, type[BaseValidatorPlugin]] = {}
+        self._drift: dict[str, type[BaseDriftDetectorPlugin]] = {}
+        self._tracers: dict[str, type[BaseTracerPlugin]] = {}
 
     def register(
         self,
-        plugin_cls: Type[Any],
+        plugin_cls: type[Any],
         *,
         overwrite: bool = False,
     ) -> None:
@@ -205,7 +204,7 @@ class PluginRegistry:
         """
         name = getattr(plugin_cls, "name", "") or plugin_cls.__name__
 
-        def _register(registry: Dict[str, Any]) -> None:
+        def _register(registry: dict[str, Any]) -> None:
             if name in registry and not overwrite:
                 raise KeyError(
                     f"Plugin '{name}' is already registered. Pass overwrite=True to replace it."
@@ -226,7 +225,7 @@ class PluginRegistry:
                 "BaseValidatorPlugin, BaseDriftDetectorPlugin, BaseTracerPlugin."
             )
 
-    def list_plugins(self) -> Dict[str, List[str]]:
+    def list_plugins(self) -> dict[str, list[str]]:
         """Return a summary of all registered plugins grouped by type."""
         return {
             "repair": list(self._repair.keys()),
@@ -235,19 +234,19 @@ class PluginRegistry:
             "tracers": list(self._tracers.keys()),
         }
 
-    def get_repair_plugins(self) -> List[BaseRepairPlugin]:
+    def get_repair_plugins(self) -> list[BaseRepairPlugin]:
         """Instantiate and return all registered repair plugins."""
         return [cls() for cls in self._repair.values()]
 
-    def get_validator_plugins(self) -> List[BaseValidatorPlugin]:
+    def get_validator_plugins(self) -> list[BaseValidatorPlugin]:
         """Instantiate and return all registered validator plugins."""
         return [cls() for cls in self._validators.values()]
 
-    def get_drift_plugins(self) -> List[BaseDriftDetectorPlugin]:
+    def get_drift_plugins(self) -> list[BaseDriftDetectorPlugin]:
         """Instantiate and return all registered drift detector plugins."""
         return [cls() for cls in self._drift.values()]
 
-    def get_tracer_plugins(self) -> List[BaseTracerPlugin]:
+    def get_tracer_plugins(self) -> list[BaseTracerPlugin]:
         """Instantiate and return all registered tracer plugins."""
         return [cls() for cls in self._tracers.values()]
 
@@ -305,10 +304,10 @@ def get_registry() -> PluginRegistry:
 
 
 def register_plugin(
-    plugin_cls: Type[Any],
+    plugin_cls: type[Any],
     *,
     overwrite: bool = False,
-) -> Type[Any]:
+) -> type[Any]:
     """Register a plugin class in the global registry.
 
     Can be used as a decorator::

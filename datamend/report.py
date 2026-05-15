@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from datamend.core.contract import ContractReport
 from datamend.core.drift import DriftReport
 from datamend.core.repair import RepairReport
 from datamend.core.trace import TraceReport
-
 
 # ---------------------------------------------------------------------------
 # MendReport — aggregated report container
@@ -31,16 +29,16 @@ class MendReport:
 
     def __init__(
         self,
-        repair: Optional[RepairReport] = None,
-        contract: Optional[ContractReport] = None,
-        drift: Optional[DriftReport] = None,
-        trace: Optional[TraceReport] = None,
+        repair: RepairReport | None = None,
+        contract: ContractReport | None = None,
+        drift: DriftReport | None = None,
+        trace: TraceReport | None = None,
         title: str = "datamend Health Report",
         # also accept the _report-suffixed names used in docs / README
-        repair_report: Optional[RepairReport] = None,
-        contract_report: Optional[ContractReport] = None,
-        drift_report: Optional[DriftReport] = None,
-        trace_report: Optional[TraceReport] = None,
+        repair_report: RepairReport | None = None,
+        contract_report: ContractReport | None = None,
+        drift_report: DriftReport | None = None,
+        trace_report: TraceReport | None = None,
     ) -> None:
         self.repair = repair or repair_report
         self.contract = contract or contract_report
@@ -48,9 +46,9 @@ class MendReport:
         self.trace = trace or trace_report
         self.title = title
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise all available reports to a single dictionary."""
-        result: Dict[str, Any] = {"title": self.title}
+        result: dict[str, Any] = {"title": self.title}
         if self.repair:
             result["repair"] = self.repair.to_dict()
         if self.contract:
@@ -65,7 +63,7 @@ class MendReport:
         """Serialise all reports to JSON."""
         return json.dumps(self.to_dict(), indent=indent, default=str)
 
-    def to_html(self, path: Optional[str] = None) -> str:
+    def to_html(self, path: str | None = None) -> str:
         """Generate a self-contained HTML dashboard.
 
         Args:
@@ -88,7 +86,6 @@ class MendReport:
             open_browser: Automatically open the dashboard in the default browser.
         """
         import http.server
-        import io
         import threading
         import webbrowser
 
@@ -122,7 +119,7 @@ class MendReport:
 # ---------------------------------------------------------------------------
 
 
-def _render_html_dashboard(data: Dict[str, Any], title: str) -> str:
+def _render_html_dashboard(data: dict[str, Any], title: str) -> str:
     """Build a fully self-contained, single-file HTML dashboard."""
     repair = data.get("repair", {})
     contract = data.get("contract", {})

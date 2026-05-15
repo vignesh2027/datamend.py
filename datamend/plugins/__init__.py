@@ -1,13 +1,13 @@
 """datamend plugin system — base classes and registry."""
 
 from datamend.plugins.base import (
-    BaseRepairPlugin,
-    BaseValidatorPlugin,
     BaseDriftDetectorPlugin,
+    BaseRepairPlugin,
     BaseTracerPlugin,
+    BaseValidatorPlugin,
     PluginRegistry,
-    register_plugin,
     get_registry,
+    register_plugin,
 )
 
 __all__ = [

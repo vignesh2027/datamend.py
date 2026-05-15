@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats
-
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -22,12 +21,12 @@ class ColumnDriftResult:
 
     column: str
     dtype: str
-    psi: Optional[float]          # Population Stability Index (numeric)
-    ks_stat: Optional[float]      # Kolmogorov-Smirnov statistic (numeric)
-    ks_pvalue: Optional[float]    # KS p-value
-    chi2_stat: Optional[float]    # Chi-square statistic (categorical)
-    chi2_pvalue: Optional[float]  # Chi-square p-value
-    jsd: Optional[float]          # Jensen-Shannon divergence (0–1)
+    psi: float | None          # Population Stability Index (numeric)
+    ks_stat: float | None      # Kolmogorov-Smirnov statistic (numeric)
+    ks_pvalue: float | None    # KS p-value
+    chi2_stat: float | None    # Chi-square statistic (categorical)
+    chi2_pvalue: float | None  # Chi-square p-value
+    jsd: float | None          # Jensen-Shannon divergence (0–1)
     drift_score: float            # Composite 0–100 (higher = more drift)
     drifted: bool                 # True if statistically significant drift detected
     severity: str                 # "none" | "low" | "medium" | "high" | "critical"
@@ -39,14 +38,14 @@ class DriftReport:
 
     mend_score: float             # 0=no drift (stable), 100=severe drift
     overall_drifted: bool
-    columns_drifted: List[str]
-    column_results: Dict[str, ColumnDriftResult]
-    train_shape: Tuple[int, int]
-    prod_shape: Tuple[int, int]
+    columns_drifted: list[str]
+    column_results: dict[str, ColumnDriftResult]
+    train_shape: tuple[int, int]
+    prod_shape: tuple[int, int]
     alpha: float
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise to plain dict."""
         return {
             "timestamp": self.timestamp,
@@ -89,7 +88,7 @@ class DriftReport:
         ]
         for col, result in self.column_results.items():
             flag = "DRIFT" if result.drifted else "ok"
-            metrics: List[str] = [f"severity={result.severity}", f"score={result.drift_score:.1f}"]
+            metrics: list[str] = [f"severity={result.severity}", f"score={result.drift_score:.1f}"]
             if result.psi is not None:
                 metrics.append(f"PSI={result.psi:.4f}")
             if result.ks_stat is not None:
@@ -184,13 +183,13 @@ def _psi_to_severity(psi: float) -> str:
 
 
 def _drift_score_from_metrics(
-    psi: Optional[float],
-    ks_stat: Optional[float],
-    jsd: Optional[float],
-    chi2_normed: Optional[float],
+    psi: float | None,
+    ks_stat: float | None,
+    jsd: float | None,
+    chi2_normed: float | None,
 ) -> float:
     """Compute a composite drift score (0–100) from multiple metrics."""
-    components: List[float] = []
+    components: list[float] = []
     if psi is not None:
         components.append(min(psi / 0.5, 1.0) * 100)
     if ks_stat is not None:
@@ -231,9 +230,9 @@ class DriftRadar:
         self.psi_buckets = psi_buckets
         self.alpha = alpha
         self.verbose = verbose
-        self._reference_df: Optional[pd.DataFrame] = None
+        self._reference_df: pd.DataFrame | None = None
 
-    def fit(self, reference_df: pd.DataFrame) -> "DriftRadar":
+    def fit(self, reference_df: pd.DataFrame) -> DriftRadar:
         """Store a reference DataFrame for later drift comparison.
 
         Enables the ``fit / detect`` pattern::
@@ -255,8 +254,8 @@ class DriftRadar:
     def detect(
         self,
         train_df: pd.DataFrame,
-        prod_df: Optional[pd.DataFrame] = None,
-        columns: Optional[List[str]] = None,
+        prod_df: pd.DataFrame | None = None,
+        columns: list[str] | None = None,
     ) -> DriftReport:
         """Detect drift between *train_df* and *prod_df*.
 
@@ -299,7 +298,7 @@ class DriftRadar:
         if not shared_cols:
             raise ValueError("No shared columns found between train_df and prod_df.")
 
-        column_results: Dict[str, ColumnDriftResult] = {}
+        column_results: dict[str, ColumnDriftResult] = {}
         for col in shared_cols:
             result = self._analyse_column(
                 train_df[col].dropna(), prod_df[col].dropna(), col

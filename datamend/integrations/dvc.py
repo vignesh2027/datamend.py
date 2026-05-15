@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from datamend.core.contract import ContractReport
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def save_repair_metrics(
-    report: "RepairReport",
+    report: RepairReport,
     *,
     metrics_path: str = "datamend_repair_metrics.json",
 ) -> None:
@@ -35,7 +35,7 @@ def save_repair_metrics(
 
 
 def save_drift_metrics(
-    report: "DriftReport",
+    report: DriftReport,
     *,
     metrics_path: str = "datamend_drift_metrics.json",
     plots_path: str = "datamend_drift_plots.json",
@@ -68,7 +68,7 @@ def save_drift_metrics(
 
 
 def save_contract_metrics(
-    report: "ContractReport",
+    report: ContractReport,
     *,
     metrics_path: str = "datamend_contract_metrics.json",
 ) -> None:
@@ -89,7 +89,7 @@ def save_contract_metrics(
 
 
 def save_pipeline_result(
-    result: "PipelineResult",
+    result: PipelineResult,
     *,
     output_dir: str = "datamend_dvc",
 ) -> None:

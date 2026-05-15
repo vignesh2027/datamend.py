@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datamend.core.contract import ContractReport
     from datamend.core.drift import DriftReport
     from datamend.core.repair import RepairReport
-    from datamend.core.trace import TraceReport
     from datamend.pipeline import PipelineResult
 
 
 def log_repair(
-    report: "RepairReport",
+    report: RepairReport,
     *,
-    run_id: Optional[str] = None,
+    run_id: str | None = None,
     prefix: str = "datamend.repair",
 ) -> None:
     """Log AutoRepair metrics and the repair report JSON to an active MLflow run.
@@ -40,7 +39,9 @@ def log_repair(
                 f"{prefix}.duration_s": report.duration_seconds,
             }
         )
-        import json, tempfile, os
+        import json
+        import os
+        import tempfile
         with tempfile.NamedTemporaryFile(
             mode="w", suffix="_repair_report.json", delete=False
         ) as fh:
@@ -53,9 +54,9 @@ def log_repair(
 
 
 def log_contract(
-    report: "ContractReport",
+    report: ContractReport,
     *,
-    run_id: Optional[str] = None,
+    run_id: str | None = None,
     prefix: str = "datamend.contract",
 ) -> None:
     """Log DataContract validation metrics to MLflow.
@@ -79,7 +80,8 @@ def log_contract(
                 f"{prefix}.passed": int(report.passed),
             }
         )
-        import json, tempfile, os
+        import os
+        import tempfile
         with tempfile.NamedTemporaryFile(
             mode="w", suffix="_contract_report.json", delete=False
         ) as fh:
@@ -92,9 +94,9 @@ def log_contract(
 
 
 def log_drift(
-    report: "DriftReport",
+    report: DriftReport,
     *,
-    run_id: Optional[str] = None,
+    run_id: str | None = None,
     prefix: str = "datamend.drift",
 ) -> None:
     """Log DriftRadar metrics to MLflow.
@@ -128,9 +130,9 @@ def log_drift(
 
 
 def log_pipeline_result(
-    result: "PipelineResult",
+    result: PipelineResult,
     *,
-    run_id: Optional[str] = None,
+    run_id: str | None = None,
 ) -> None:
     """Log a full MendPipeline result (all four pillars) to MLflow.
 
@@ -152,7 +154,7 @@ def log_pipeline_result(
             log_drift(result.drift_report, run_id=run_id)
 
 
-def _maybe_run(run_id: Optional[str]) -> Any:
+def _maybe_run(run_id: str | None) -> Any:
     """Context manager that either uses an existing run or the active run."""
     import mlflow
 
@@ -162,7 +164,7 @@ def _maybe_run(run_id: Optional[str]) -> Any:
 
 
 class _NullContext:
-    def __enter__(self) -> "_NullContext":
+    def __enter__(self) -> _NullContext:
         return self
 
     def __exit__(self, *args: Any) -> None:

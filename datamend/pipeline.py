@@ -5,15 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
-from datamend.core.contract import DataContract, ContractReport
+from datamend.core.contract import ContractReport, DataContract
 from datamend.core.drift import DriftRadar, DriftReport
 from datamend.core.repair import AutoRepair, RepairReport
 from datamend.core.trace import FailureTrace, TraceReport
-
 
 # ---------------------------------------------------------------------------
 # Pipeline result
@@ -26,9 +25,9 @@ class PipelineResult:
 
     repaired_df: pd.DataFrame
     repair_report: RepairReport
-    contract_report: Optional[ContractReport]
-    drift_report: Optional[DriftReport]
-    trace_report: Optional[TraceReport]
+    contract_report: ContractReport | None
+    drift_report: DriftReport | None
+    trace_report: TraceReport | None
     overall_mend_score: float
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -70,9 +69,9 @@ class PipelineResult:
         lines.append("=" * 65)
         return "\n".join(lines)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise to plain dict (excluding the DataFrame)."""
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "timestamp": self.timestamp,
             "overall_mend_score": round(self.overall_mend_score, 2),
             "repair": self.repair_report.to_dict(),
@@ -130,7 +129,7 @@ class MendPipeline:
         enable_trace: bool = True,
         fast_mode: bool = False,
         verbose: bool = True,
-        plugins: Optional[List[Any]] = None,
+        plugins: list[Any] | None = None,
     ) -> None:
         self.enable_repair = enable_repair
         self.enable_contract = enable_contract
@@ -148,10 +147,10 @@ class MendPipeline:
         self._drift_radar = DriftRadar(psi_buckets=psi_buckets, alpha=drift_alpha, verbose=False)
         self._tracer = FailureTrace(top_k=top_k_trace, verbose=False)
 
-        self._train_df_clean: Optional[pd.DataFrame] = None
+        self._train_df_clean: pd.DataFrame | None = None
         self._fitted = False
 
-    def fit(self, train_df: pd.DataFrame) -> "MendPipeline":
+    def fit(self, train_df: pd.DataFrame) -> MendPipeline:
         """Fit the pipeline on clean training data.
 
         Repairs the training data, learns its DataContract, and stores a
@@ -178,9 +177,9 @@ class MendPipeline:
     def transform(
         self,
         df: pd.DataFrame,
-        model: Optional[Any] = None,
-        predictions: Optional[Any] = None,
-        ground_truth: Optional[Any] = None,
+        model: Any | None = None,
+        predictions: Any | None = None,
+        ground_truth: Any | None = None,
     ) -> PipelineResult:
         """Run all enabled pillars on new data and return a PipelineResult.
 
@@ -201,7 +200,6 @@ class MendPipeline:
             repaired_df, repair_report = self._repair_engine.fit_transform(df)
         else:
             repaired_df = df.copy()
-            from datamend.core.repair import RepairAction
             repair_report = RepairReport(
                 total_issues_found=0,
                 total_rows_affected=0,
@@ -213,12 +211,12 @@ class MendPipeline:
             )
 
         # Pillar 2 — DataContract
-        contract_report: Optional[ContractReport] = None
+        contract_report: ContractReport | None = None
         if self.enable_contract and self._contract._fitted:
             contract_report = self._contract.validate(repaired_df)
 
         # Pillar 3 — DriftRadar
-        drift_report: Optional[DriftReport] = None
+        drift_report: DriftReport | None = None
         if self.enable_drift and self._train_df_clean is not None:
             shared = list(set(self._train_df_clean.columns) & set(repaired_df.columns))
             if shared:
@@ -227,7 +225,7 @@ class MendPipeline:
                 )
 
         # Pillar 4 — FailureTrace
-        trace_report: Optional[TraceReport] = None
+        trace_report: TraceReport | None = None
         if self.enable_trace and model is not None and predictions is not None:
             trace_report = self._tracer.trace(model, repaired_df, predictions, ground_truth)
 
@@ -258,10 +256,10 @@ class MendPipeline:
     def fit_transform(
         self,
         train_df: pd.DataFrame,
-        prod_df: Optional[pd.DataFrame] = None,
-        model: Optional[Any] = None,
-        predictions: Optional[Any] = None,
-        ground_truth: Optional[Any] = None,
+        prod_df: pd.DataFrame | None = None,
+        model: Any | None = None,
+        predictions: Any | None = None,
+        ground_truth: Any | None = None,
     ) -> PipelineResult:
         """Fit on training data and immediately transform production data.
 
@@ -282,12 +280,12 @@ class MendPipeline:
     @staticmethod
     def _compute_overall_mend_score(
         repair: RepairReport,
-        contract: Optional[ContractReport],
-        drift: Optional[DriftReport],
-        trace: Optional[TraceReport],
+        contract: ContractReport | None,
+        drift: DriftReport | None,
+        trace: TraceReport | None,
     ) -> float:
         """Compute a weighted overall MendScore from all pillar reports."""
-        scores: List[Tuple[float, float]] = []  # (score, weight)
+        scores: list[tuple[float, float]] = []  # (score, weight)
         scores.append((repair.mend_score_after, 0.35))
         if contract is not None:
             scores.append((contract.mend_score, 0.30))

@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datamend.core.contract import ContractReport
     from datamend.core.drift import DriftReport
     from datamend.core.repair import RepairReport
-    from datamend.core.trace import TraceReport
     from datamend.pipeline import PipelineResult
 
 
@@ -22,9 +21,9 @@ def _get_wandb() -> Any:
 
 
 def log_repair(
-    report: "RepairReport",
+    report: RepairReport,
     *,
-    step: Optional[int] = None,
+    step: int | None = None,
     prefix: str = "datamend/repair",
 ) -> None:
     """Log AutoRepair metrics to the active W&B run.
@@ -48,9 +47,9 @@ def log_repair(
 
 
 def log_contract(
-    report: "ContractReport",
+    report: ContractReport,
     *,
-    step: Optional[int] = None,
+    step: int | None = None,
     prefix: str = "datamend/contract",
 ) -> None:
     """Log DataContract metrics to the active W&B run.
@@ -73,9 +72,9 @@ def log_contract(
 
 
 def log_drift(
-    report: "DriftReport",
+    report: DriftReport,
     *,
-    step: Optional[int] = None,
+    step: int | None = None,
     prefix: str = "datamend/drift",
 ) -> None:
     """Log DriftRadar metrics to the active W&B run.
@@ -102,9 +101,9 @@ def log_drift(
 
 
 def log_pipeline_result(
-    result: "PipelineResult",
+    result: PipelineResult,
     *,
-    step: Optional[int] = None,
+    step: int | None = None,
 ) -> None:
     """Log a full MendPipeline result to the active W&B run.
 
