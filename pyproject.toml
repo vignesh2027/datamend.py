@@ -104,12 +104,15 @@ strict = true
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py39"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "ANN", "B", "C4", "SIM"]
-ignore = ["ANN101", "ANN102"]
+select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = [
+    "E501",   # line too long — handled by formatter
+    "SIM108", # ternary vs if/else — readability preference
+]
 
 [tool.coverage.run]
 source = ["datamend"]

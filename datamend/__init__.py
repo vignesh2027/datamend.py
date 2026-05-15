@@ -11,16 +11,16 @@ Four pillars, one API:
 
 from __future__ import annotations
 
-from datamend.core.repair import AutoRepair, RepairReport
-from datamend.core.contract import DataContract, ContractReport
+from typing import Any
+
+import pandas as pd
+
+from datamend.core.contract import ContractReport, DataContract
 from datamend.core.drift import DriftRadar, DriftReport
+from datamend.core.repair import AutoRepair, RepairReport
 from datamend.core.trace import FailureTrace, TraceReport
 from datamend.pipeline import MendPipeline
 from datamend.report import MendReport
-
-import pandas as pd
-import numpy as np
-from typing import Any, Optional
 
 __version__ = "1.1.0"
 __author__ = "Vignesh"
@@ -53,7 +53,7 @@ def repair(
     confirm: bool = False,
     fast_mode: bool = False,
     chunk_size: int = 100_000,
-    plugins: Optional[list[Any]] = None,
+    plugins: list[Any] | None = None,
     verbose: bool = True,
 ) -> tuple[pd.DataFrame, RepairReport]:
     """Automatically detect and repair all data quality issues in a DataFrame.
@@ -134,7 +134,7 @@ def drift(
     train_df: pd.DataFrame,
     prod_df: pd.DataFrame,
     *,
-    columns: Optional[list[str]] = None,
+    columns: list[str] | None = None,
     psi_buckets: int = 10,
     alpha: float = 0.05,
     verbose: bool = True,
@@ -161,7 +161,7 @@ def trace(
     df: pd.DataFrame,
     predictions: Any,
     *,
-    ground_truth: Optional[Any] = None,
+    ground_truth: Any | None = None,
     top_k: int = 10,
     verbose: bool = True,
 ) -> TraceReport:

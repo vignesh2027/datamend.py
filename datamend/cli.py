@@ -5,19 +5,17 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
-
+import pandas as pd
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _load_dataframe(path: str) -> "pd.DataFrame":
+def _load_dataframe(path: str) -> pd.DataFrame:
     """Load a CSV, Parquet, JSON, or Excel file into a DataFrame."""
-    import pandas as pd
 
     p = Path(path)
     if not p.exists():
@@ -36,9 +34,8 @@ def _load_dataframe(path: str) -> "pd.DataFrame":
     sys.exit(1)
 
 
-def _save_dataframe(df: "pd.DataFrame", path: str) -> None:
+def _save_dataframe(df: pd.DataFrame, path: str) -> None:
     """Save DataFrame to the given path (inferred from extension)."""
-    import pandas as pd
 
     p = Path(path)
     suffix = p.suffix.lower()
@@ -91,11 +88,11 @@ def main() -> None:
 @click.option("--no-verbose", is_flag=True, help="Suppress rich output.")
 def repair(
     input_file: str,
-    output: Optional[str],
+    output: str | None,
     strategy: str,
     fast: bool,
-    report: Optional[str],
-    html: Optional[str],
+    report: str | None,
+    html: str | None,
     confirm: bool,
     no_verbose: bool,
 ) -> None:
@@ -148,8 +145,8 @@ def repair(
 def validate(
     input_file: str,
     contract_file: str,
-    report: Optional[str],
-    html: Optional[str],
+    report: str | None,
+    html: str | None,
     fail_fast: bool,
     no_verbose: bool,
 ) -> None:
@@ -199,7 +196,7 @@ def validate(
 @click.option("--no-verbose", is_flag=True, help="Suppress output.")
 def contract(
     input_file: str,
-    output: Optional[str],
+    output: str | None,
     name: str,
     null_threshold: float,
     no_verbose: bool,
@@ -237,8 +234,8 @@ def contract(
 def drift(
     train_file: str,
     prod_file: str,
-    report: Optional[str],
-    html: Optional[str],
+    report: str | None,
+    html: str | None,
     alpha: float,
     no_verbose: bool,
 ) -> None:
@@ -310,7 +307,7 @@ def dashboard(report_json: str, port: int, no_open: bool) -> None:
     from datamend.report import MendReport, _render_html_dashboard
 
     html = _render_html_dashboard(data, title=data.get("title", "datamend Report"))
-    mr = MendReport(title=data.get("title", "datamend Report"))
+    MendReport(title=data.get("title", "datamend Report"))
 
     import http.server
     import threading

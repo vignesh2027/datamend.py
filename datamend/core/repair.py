@@ -6,12 +6,11 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats
-
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -37,14 +36,14 @@ class RepairReport:
 
     total_issues_found: int
     total_rows_affected: int
-    actions: List[RepairAction]
-    columns_repaired: List[str]
+    actions: list[RepairAction]
+    columns_repaired: list[str]
     duration_seconds: float
     mend_score_before: float
     mend_score_after: float
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise the report to a plain dictionary."""
         return {
             "timestamp": self.timestamp,
@@ -149,7 +148,7 @@ def _is_numeric_string_column(series: pd.Series) -> bool:
     return numeric_count / len(sample) > 0.8
 
 
-def _detect_date_formats(series: pd.Series) -> List[str]:
+def _detect_date_formats(series: pd.Series) -> list[str]:
     """Return a list of date format strings detected in the series."""
     formats = [
         "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y",
@@ -196,13 +195,13 @@ class _NullDetector:
     def __init__(self, strategy: str = "auto") -> None:
         self.strategy = strategy
 
-    def detect(self, df: pd.DataFrame) -> Dict[str, int]:
+    def detect(self, df: pd.DataFrame) -> dict[str, int]:
         return {col: int(df[col].isnull().sum()) for col in df.columns if df[col].isnull().any()}
 
     def fix(
-        self, df: pd.DataFrame, null_counts: Dict[str, int]
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
-        actions: List[RepairAction] = []
+        self, df: pd.DataFrame, null_counts: dict[str, int]
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
+        actions: list[RepairAction] = []
         df = df.copy()
         for col, count in null_counts.items():
             if count == 0:
@@ -225,7 +224,7 @@ class _NullDetector:
                     fill_val = series.mean()
                 df[col] = series.fillna(fill_val)
                 desc = f"Imputed {count} nulls with {strategy}={fill_val:.4g}"
-            elif isinstance(series.dtype, pd.CategoricalDtype) or dtype == object or str(dtype) == "string":
+            elif isinstance(series.dtype, pd.CategoricalDtype) or dtype is object or str(dtype) == "string":
                 fill_val = series.mode().iloc[0] if not series.mode().empty else "UNKNOWN"
                 df[col] = series.fillna(fill_val)
                 desc = f"Imputed {count} nulls with mode='{fill_val}'"
@@ -261,8 +260,8 @@ class _OutlierDetector:
     def __init__(self, z_threshold: float = 3.5) -> None:
         self.z_threshold = z_threshold
 
-    def detect(self, df: pd.DataFrame) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
-        result: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
+    def detect(self, df: pd.DataFrame) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+        result: dict[str, tuple[np.ndarray, np.ndarray]] = {}
         num_cols = df.select_dtypes(include=[np.number]).columns
         for col in num_cols:
             series = df[col].dropna()
@@ -281,9 +280,9 @@ class _OutlierDetector:
         return result
 
     def fix(
-        self, df: pd.DataFrame, outliers: Dict[str, Tuple[np.ndarray, np.ndarray]]
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
-        actions: List[RepairAction] = []
+        self, df: pd.DataFrame, outliers: dict[str, tuple[np.ndarray, np.ndarray]]
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
+        actions: list[RepairAction] = []
         df = df.copy()
         for col, (idx, vals) in outliers.items():
             series = df[col]
@@ -310,8 +309,8 @@ class _OutlierDetector:
 class _TypeMismatchDetector:
     """Detect silent type coercions and fix columns stored as wrong dtype."""
 
-    def detect(self, df: pd.DataFrame) -> Dict[str, str]:
-        candidates: Dict[str, str] = {}
+    def detect(self, df: pd.DataFrame) -> dict[str, str]:
+        candidates: dict[str, str] = {}
         for col in df.select_dtypes(include=["object", "str"]).columns:
             series = df[col].dropna()
             if len(series) == 0:
@@ -325,9 +324,9 @@ class _TypeMismatchDetector:
         return candidates
 
     def fix(
-        self, df: pd.DataFrame, candidates: Dict[str, str]
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
-        actions: List[RepairAction] = []
+        self, df: pd.DataFrame, candidates: dict[str, str]
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
+        actions: list[RepairAction] = []
         df = df.copy()
         for col, target_type in candidates.items():
             series = df[col]
@@ -379,15 +378,15 @@ class _DuplicateDetector:
 
     def detect_near_duplicates(
         self, df: pd.DataFrame, threshold: float = 0.85
-    ) -> List[Tuple[int, int]]:
+    ) -> list[tuple[int, int]]:
         """Find near-duplicate rows using Jaccard similarity on string representations."""
         obj_cols = df.select_dtypes(include=["object", "str"]).columns
         if len(obj_cols) == 0:
             return []
-        str_repr = df[obj_cols].astype(str).apply(
+        str_repr = df[obj_cols].fillna("").astype(str).apply(
             lambda row: set(" ".join(row.values).lower().split()), axis=1
         )
-        pairs: List[Tuple[int, int]] = []
+        pairs: list[tuple[int, int]] = []
         idx_list = list(str_repr.index[:500])  # cap at 500 for performance
         for i in range(len(idx_list)):
             for j in range(i + 1, len(idx_list)):
@@ -405,9 +404,9 @@ class _DuplicateDetector:
         self,
         df: pd.DataFrame,
         exact_idx: pd.Index,
-        near_pairs: List[Tuple[int, int]],
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
-        actions: List[RepairAction] = []
+        near_pairs: list[tuple[int, int]],
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
+        actions: list[RepairAction] = []
         df = df.copy()
         if len(exact_idx) > 0:
             df = df.drop(index=exact_idx).reset_index(drop=True)
@@ -445,8 +444,8 @@ class _EncodingDetector:
 
     _MOJIBAKE_PATTERN = re.compile(r"[\xc0-\xff][\x80-\xbf]{1,3}")
 
-    def detect(self, df: pd.DataFrame) -> Dict[str, int]:
-        result: Dict[str, int] = {}
+    def detect(self, df: pd.DataFrame) -> dict[str, int]:
+        result: dict[str, int] = {}
         for col in df.select_dtypes(include=["object", "str"]).columns:
             series = df[col].dropna().astype(str)
             if len(series) == 0:
@@ -457,9 +456,9 @@ class _EncodingDetector:
         return result
 
     def fix(
-        self, df: pd.DataFrame, affected: Dict[str, int]
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
-        actions: List[RepairAction] = []
+        self, df: pd.DataFrame, affected: dict[str, int]
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
+        actions: list[RepairAction] = []
         df = df.copy()
         for col, count in affected.items():
             df[col] = df[col].apply(
@@ -482,16 +481,16 @@ class _EncodingDetector:
 class _CategoryNormalisationDetector:
     """Detect inconsistent category labels (Male/male/M → male)."""
 
-    def detect(self, df: pd.DataFrame, cardinality_cap: int = 50) -> Dict[str, Dict[str, str]]:
+    def detect(self, df: pd.DataFrame, cardinality_cap: int = 50) -> dict[str, dict[str, str]]:
         """Return per-column mapping from raw value → normalised value."""
-        result: Dict[str, Dict[str, str]] = {}
+        result: dict[str, dict[str, str]] = {}
         for col in df.select_dtypes(include=["object", "str"]).columns:
             series = df[col].dropna().astype(str)
             unique_vals = series.unique()
             if len(unique_vals) > cardinality_cap:
                 continue
-            norm_map: Dict[str, str] = {}
-            norm_to_canonical: Dict[str, str] = {}
+            norm_map: dict[str, str] = {}
+            norm_to_canonical: dict[str, str] = {}
             for val in unique_vals:
                 norm = _normalise_category(val)
                 if norm in norm_to_canonical:
@@ -504,9 +503,9 @@ class _CategoryNormalisationDetector:
         return result
 
     def fix(
-        self, df: pd.DataFrame, mappings: Dict[str, Dict[str, str]]
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
-        actions: List[RepairAction] = []
+        self, df: pd.DataFrame, mappings: dict[str, dict[str, str]]
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
+        actions: list[RepairAction] = []
         df = df.copy()
         for col, mapping in mappings.items():
             affected = df[col].isin(mapping.keys()).sum()
@@ -533,8 +532,8 @@ class _WhitespaceDetector:
 
     _HIDDEN_CHARS = re.compile(r"[\x00-\x1f\x7f\xa0​‌‍﻿]")
 
-    def detect(self, df: pd.DataFrame) -> Dict[str, int]:
-        result: Dict[str, int] = {}
+    def detect(self, df: pd.DataFrame) -> dict[str, int]:
+        result: dict[str, int] = {}
         for col in df.select_dtypes(include=["object", "str"]).columns:
             series = df[col].dropna().astype(str)
             if len(series) == 0:
@@ -547,9 +546,9 @@ class _WhitespaceDetector:
         return result
 
     def fix(
-        self, df: pd.DataFrame, affected: Dict[str, int]
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
-        actions: List[RepairAction] = []
+        self, df: pd.DataFrame, affected: dict[str, int]
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
+        actions: list[RepairAction] = []
         df = df.copy()
         for col, count in affected.items():
             df[col] = df[col].apply(
@@ -572,9 +571,9 @@ class _WhitespaceDetector:
 class _UnitMismatchDetector:
     """Detect probable unit mismatches in numeric columns (e.g. km vs miles)."""
 
-    def detect(self, df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
+    def detect(self, df: pd.DataFrame) -> dict[str, dict[str, Any]]:
         """Detect columns where the distribution has a suspicious bimodal structure."""
-        result: Dict[str, Dict[str, Any]] = {}
+        result: dict[str, dict[str, Any]] = {}
         for col in df.select_dtypes(include=[np.number]).columns:
             series = df[col].dropna()
             if len(series) < 20:
@@ -592,10 +591,10 @@ class _UnitMismatchDetector:
         return result
 
     def fix(
-        self, df: pd.DataFrame, suspects: Dict[str, Dict[str, Any]]
-    ) -> Tuple[pd.DataFrame, List[RepairAction]]:
+        self, df: pd.DataFrame, suspects: dict[str, dict[str, Any]]
+    ) -> tuple[pd.DataFrame, list[RepairAction]]:
         """Flag but do not auto-correct unit mismatches (domain-specific)."""
-        actions: List[RepairAction] = []
+        actions: list[RepairAction] = []
         for col, info in suspects.items():
             actions.append(
                 RepairAction(
@@ -642,14 +641,14 @@ class AutoRepair:
         confirm: bool = False,
         fast_mode: bool = False,
         chunk_size: int = 100_000,
-        plugins: Optional[List[Any]] = None,
+        plugins: list[Any] | None = None,
         verbose: bool = True,
     ) -> None:
         self.strategy = strategy
         self.confirm = confirm
         self.fast_mode = fast_mode
         self.chunk_size = chunk_size
-        self.plugins: List[Any] = plugins or []
+        self.plugins: list[Any] = plugins or []
         self.verbose = verbose
 
         self._null = _NullDetector(strategy=strategy)
@@ -661,7 +660,7 @@ class AutoRepair:
         self._ws = _WhitespaceDetector()
         self._unit = _UnitMismatchDetector()
 
-    def fit_transform(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, RepairReport]:
+    def fit_transform(self, df: pd.DataFrame) -> tuple[pd.DataFrame, RepairReport]:
         """Run the full repair pipeline on *df* and return (repaired_df, report).
 
         Args:
@@ -678,12 +677,9 @@ class AutoRepair:
 
         mend_before = _compute_mend_score(df)
 
-        if self.fast_mode and len(df) > 50_000:
-            detect_df = df.sample(50_000, random_state=42)
-        else:
-            detect_df = df
+        detect_df = df.sample(50000, random_state=42) if self.fast_mode and len(df) > 50000 else df
 
-        all_actions: List[RepairAction] = []
+        all_actions: list[RepairAction] = []
 
         # Phase 1 — whitespace / encoding (run first so subsequent detectors see clean text)
         ws_affected = self._ws.detect(detect_df)
@@ -765,7 +761,7 @@ class AutoRepair:
 
     def repair_chunked(
         self, df: pd.DataFrame
-    ) -> Tuple[pd.DataFrame, List[RepairReport]]:
+    ) -> tuple[pd.DataFrame, list[RepairReport]]:
         """Process a large DataFrame in chunks, returning one report per chunk.
 
         Args:
@@ -775,8 +771,8 @@ class AutoRepair:
             Tuple of (concatenated repaired DataFrame, list of per-chunk RepairReports).
         """
         chunks = [df.iloc[i : i + self.chunk_size] for i in range(0, len(df), self.chunk_size)]
-        repaired_chunks: List[pd.DataFrame] = []
-        reports: List[RepairReport] = []
+        repaired_chunks: list[pd.DataFrame] = []
+        reports: list[RepairReport] = []
         for chunk in chunks:
             repaired, report = self.fit_transform(chunk)
             repaired_chunks.append(repaired)

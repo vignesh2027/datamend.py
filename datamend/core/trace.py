@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
-
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -21,9 +20,9 @@ class RowFailure:
 
     row_index: Any
     suspicion_score: float          # 0–100; higher = more likely failure
-    top_columns: List[str]          # columns most responsible for this row's anomaly
+    top_columns: list[str]          # columns most responsible for this row's anomaly
     data_quality_score: float       # 0–100; 0 = terrible quality for this row
-    model_confidence: Optional[float]  # if available from model
+    model_confidence: float | None  # if available from model
     reason: str
 
 
@@ -43,15 +42,15 @@ class TraceReport:
     """Complete FailureTrace result."""
 
     total_rows: int
-    suspicious_rows: List[RowFailure]
-    column_attributions: List[ColumnAttribution]
+    suspicious_rows: list[RowFailure]
+    column_attributions: list[ColumnAttribution]
     mend_score: float           # 0=no failures traced, 100=severe widespread failures
-    top_failure_columns: List[str]
+    top_failure_columns: list[str]
     data_quality_failure_pct: float
     model_failure_pct: float
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise to plain dict."""
         return {
             "timestamp": self.timestamp,
@@ -138,7 +137,7 @@ def _detect_model_type(model: Any) -> str:
 
 def _get_feature_importances(
     model: Any, df: pd.DataFrame, model_type: str
-) -> Optional[np.ndarray]:
+) -> np.ndarray | None:
     """Extract normalised feature importances from a model (0–1 per feature)."""
     try:
         if hasattr(model, "feature_importances_"):
@@ -167,16 +166,15 @@ def _surrogate_importances(
     """
     try:
         from sklearn.tree import DecisionTreeRegressor  # type: ignore
-        from sklearn.preprocessing import LabelEncoder  # type: ignore
 
         numeric_df = df.select_dtypes(include=[np.number])
         if numeric_df.shape[1] == 0 or len(df) < 10:
             return np.ones(df.shape[1]) / max(df.shape[1], 1)
 
-        X = numeric_df.fillna(numeric_df.median()).values
+        x_vals = numeric_df.fillna(numeric_df.median()).values
         y = predictions.astype(float) if predictions.ndim == 1 else predictions[:, 0].astype(float)
         surrogate = DecisionTreeRegressor(max_depth=5, random_state=42)
-        surrogate.fit(X, y[: len(X)])
+        surrogate.fit(x_vals, y[: len(x_vals)])
         fi = surrogate.feature_importances_
         # Map back to full column space
         full_fi = np.zeros(df.shape[1])
@@ -191,7 +189,7 @@ def _surrogate_importances(
         return np.ones(df.shape[1]) / max(df.shape[1], 1)
 
 
-def _row_data_quality_score(row: pd.Series, global_stats: Dict[str, Any]) -> float:
+def _row_data_quality_score(row: pd.Series, global_stats: dict[str, Any]) -> float:
     """Score the data quality of a single row (0=terrible, 100=perfect)."""
     issues = 0
     checks = 0
@@ -219,7 +217,7 @@ def _row_data_quality_score(row: pd.Series, global_stats: Dict[str, Any]) -> flo
     return max(0.0, 100.0 * (1.0 - issues / checks))
 
 
-def _predict_confidence(model: Any, df: pd.DataFrame, model_type: str) -> Optional[np.ndarray]:
+def _predict_confidence(model: Any, df: pd.DataFrame, model_type: str) -> np.ndarray | None:
     """Extract per-row model confidence scores (probability of top class or abs score)."""
     try:
         if hasattr(model, "predict_proba"):
@@ -258,16 +256,16 @@ class FailureTrace:
     def __init__(self, top_k: int = 10, verbose: bool = True) -> None:
         self.top_k = top_k
         self.verbose = verbose
-        self._model: Optional[Any] = None
-        self._train_df: Optional[pd.DataFrame] = None
-        self._train_labels: Optional[Any] = None
+        self._model: Any | None = None
+        self._train_df: pd.DataFrame | None = None
+        self._train_labels: Any | None = None
 
     def fit(
         self,
         model: Any,
         train_df: pd.DataFrame,
-        train_labels: Optional[Any] = None,
-    ) -> "FailureTrace":
+        train_labels: Any | None = None,
+    ) -> FailureTrace:
         """Store a fitted model and optional training data for later tracing.
 
         Enables the ``fit / trace`` pattern::
@@ -293,7 +291,7 @@ class FailureTrace:
         model: Any,
         df: pd.DataFrame,
         predictions: Any,
-        ground_truth: Optional[Any] = None,
+        ground_truth: Any | None = None,
     ) -> TraceReport:
         """Run the full failure trace.
 
@@ -320,13 +318,10 @@ class FailureTrace:
             fi = _surrogate_importances(model, df, predictions_arr)
 
         # Pad or trim fi to match column count
-        if len(fi) < df.shape[1]:
-            fi = np.pad(fi, (0, df.shape[1] - len(fi)))
-        else:
-            fi = fi[: df.shape[1]]
+        fi = np.pad(fi, (0, df.shape[1] - len(fi))) if len(fi) < df.shape[1] else fi[:df.shape[1]]
 
         # --- Global column statistics for data-quality checks ---
-        global_stats: Dict[str, Any] = {}
+        global_stats: dict[str, Any] = {}
         for col in df.columns:
             series = df[col].dropna()
             if pd.api.types.is_numeric_dtype(series):
@@ -336,8 +331,8 @@ class FailureTrace:
                 }
 
         # --- Per-column anomaly rates ---
-        anomaly_rates: Dict[str, float] = {}
-        for i, col in enumerate(df.columns):
+        anomaly_rates: dict[str, float] = {}
+        for col in df.columns:
             series = df[col]
             n = len(series)
             if n == 0:
@@ -347,7 +342,6 @@ class FailureTrace:
             if pd.api.types.is_numeric_dtype(series):
                 clean = series.dropna()
                 if len(clean) > 3:
-                    from scipy import stats as _stats
                     median = clean.median()
                     mad = np.median(np.abs(clean - median))
                     if mad > 0:
@@ -359,14 +353,14 @@ class FailureTrace:
         confidences = _predict_confidence(model, df, model_type)
 
         # --- Per-row suspicion scoring ---
-        row_failures: List[RowFailure] = []
+        row_failures: list[RowFailure] = []
         index_list = list(df.index)
         for row_pos, idx in enumerate(index_list):
             row = df.iloc[row_pos]  # always use integer position to avoid get_loc issues
             dq_score = _row_data_quality_score(row, global_stats)
 
             # Build row-level column anomaly scores
-            col_anomalies: Dict[str, float] = {}
+            col_anomalies: dict[str, float] = {}
             for i, col in enumerate(df.columns):
                 val = row.iloc[i]
                 score = 0.0
@@ -394,8 +388,7 @@ class FailureTrace:
             dq_suspicion = 1.0 - dq_score / 100.0
             suspicion_score = (0.5 * dq_suspicion + 0.3 * weighted_anomaly + 0.2 * model_suspicion) * 100
 
-            if ground_truth_arr is not None:
-                if row_pos < len(ground_truth_arr) and row_pos < len(predictions_arr):
+            if ground_truth_arr is not None and row_pos < len(ground_truth_arr) and row_pos < len(predictions_arr):
                     error = abs(
                         float(predictions_arr[row_pos]) - float(ground_truth_arr[row_pos])
                     )
@@ -431,7 +424,7 @@ class FailureTrace:
         row_failures.sort(key=lambda r: r.suspicion_score, reverse=True)
 
         # --- Column attributions ---
-        column_attributions: List[ColumnAttribution] = []
+        column_attributions: list[ColumnAttribution] = []
         for i, col in enumerate(df.columns):
             model_contrib = float(fi[i]) * 100
             dq_contrib = anomaly_rates.get(str(col), 0.0) * 100
