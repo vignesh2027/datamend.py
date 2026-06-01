@@ -738,4 +738,4 @@ class TestTopLevelAPI:
 
     def test_version_string(self) -> None:
         import datamend
-        assert datamend.__version__ == "1.1.0"
+        assert datamend.__version__ == "1.1.1"

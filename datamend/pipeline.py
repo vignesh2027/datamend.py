@@ -298,4 +298,5 @@ class MendPipeline:
         total_weight = sum(w for _, w in scores)
         if total_weight == 0:
             return 100.0
-        return sum(s * w for s, w in scores) / total_weight
+        raw = sum(s * w for s, w in scores) / total_weight
+        return max(0.0, min(100.0, raw))
