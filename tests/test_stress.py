@@ -619,7 +619,7 @@ class TestMendReportStress:
         try:
             html = rep.to_html(path)
             assert os.path.exists(path)
-            with open(path) as fh:
+            with open(path, encoding="utf-8") as fh:
                 on_disk = fh.read()
             assert on_disk == html
         finally:
@@ -738,4 +738,4 @@ class TestTopLevelAPI:
 
     def test_version_string(self) -> None:
         import datamend
-        assert datamend.__version__ == "1.1.1"
+        assert datamend.__version__ == "1.1.2"

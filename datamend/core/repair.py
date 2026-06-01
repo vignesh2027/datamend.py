@@ -127,7 +127,7 @@ def _compute_mend_score(df: pd.DataFrame) -> float:
         penalty += outlier_rate * 25
 
     # Whitespace / hidden characters penalty (object columns)
-    obj_cols = df.select_dtypes(include=["object", "str"]).columns
+    obj_cols = df.select_dtypes(include=["object", "string"]).columns
     ws_issues = 0
     for col in obj_cols:
         series = df[col].dropna().astype(str)
@@ -311,7 +311,7 @@ class _TypeMismatchDetector:
 
     def detect(self, df: pd.DataFrame) -> dict[str, str]:
         candidates: dict[str, str] = {}
-        for col in df.select_dtypes(include=["object", "str"]).columns:
+        for col in df.select_dtypes(include=["object", "string"]).columns:
             series = df[col].dropna()
             if len(series) == 0:
                 continue
@@ -380,7 +380,7 @@ class _DuplicateDetector:
         self, df: pd.DataFrame, threshold: float = 0.85
     ) -> list[tuple[int, int]]:
         """Find near-duplicate rows using Jaccard similarity on string representations."""
-        obj_cols = df.select_dtypes(include=["object", "str"]).columns
+        obj_cols = df.select_dtypes(include=["object", "string"]).columns
         if len(obj_cols) == 0:
             return []
         str_repr = df[obj_cols].fillna("").astype(str).apply(
@@ -446,7 +446,7 @@ class _EncodingDetector:
 
     def detect(self, df: pd.DataFrame) -> dict[str, int]:
         result: dict[str, int] = {}
-        for col in df.select_dtypes(include=["object", "str"]).columns:
+        for col in df.select_dtypes(include=["object", "string"]).columns:
             series = df[col].dropna().astype(str)
             if len(series) == 0:
                 continue
@@ -484,7 +484,7 @@ class _CategoryNormalisationDetector:
     def detect(self, df: pd.DataFrame, cardinality_cap: int = 50) -> dict[str, dict[str, str]]:
         """Return per-column mapping from raw value → normalised value."""
         result: dict[str, dict[str, str]] = {}
-        for col in df.select_dtypes(include=["object", "str"]).columns:
+        for col in df.select_dtypes(include=["object", "string"]).columns:
             series = df[col].dropna().astype(str)
             unique_vals = series.unique()
             if len(unique_vals) > cardinality_cap:
@@ -534,7 +534,7 @@ class _WhitespaceDetector:
 
     def detect(self, df: pd.DataFrame) -> dict[str, int]:
         result: dict[str, int] = {}
-        for col in df.select_dtypes(include=["object", "str"]).columns:
+        for col in df.select_dtypes(include=["object", "string"]).columns:
             series = df[col].dropna().astype(str)
             if len(series) == 0:
                 continue

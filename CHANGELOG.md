@@ -7,6 +7,23 @@ datamend follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.2] — 2026-06-01
+
+### Fixed
+
+- **Cross-platform `select_dtypes` TypeError** — `repair.py` used `include=["object", "str"]`
+  where `"str"` maps to `numpy.str_` (rejected) in pandas 2.x. Changed to `"string"`
+  (pandas `StringDtype`) which works in both pandas 2.x and 3.x across Python 3.9–3.13
+  on Windows, macOS, and Linux.
+- **Windows UTF-8 HTML comparison test** — `test_stress.py` read HTML files without
+  `encoding="utf-8"`, causing `·` and `→` to appear as mojibake on Windows (cp1252).
+  Now reads with explicit `encoding="utf-8"`.
+- **Pipeline `overall_mend_score` float overflow** — clamped to `[0.0, 100.0]` via
+  `min(100.0, max(0.0, raw))` to prevent `100.00000000000001` assertion failures.
+- **131 new advanced tests** added for all four pillars, CLI, cross-pillar integration,
+  serialisation round-trips, adversarial inputs (emoji, unicode, all-null, constant cols,
+  single row/col, 100k rows, boolean/datetime/wide DataFrames).
+
 ## [1.1.1] — 2026-05-15
 
 ### Fixed
