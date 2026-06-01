@@ -7,6 +7,18 @@ datamend follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.3] — 2026-06-01
+
+### Fixed
+
+- **`test_plugins.py` select_dtypes `"str"` TypeError** — plugin test used
+  `include=["object", "str"]`; changed to `"string"` for pandas 2.x/3.x compat.
+- **All-null object column `fillna(None)` crash** — `_NullDetector.fix()` computed
+  `series.mode()` on all-null columns which returns `[None]` in pandas 2.x; calling
+  `fillna(None)` raised `ValueError: Must specify a fill 'value' or 'method'`.
+  Fixed by using `series.dropna().mode()` and skipping imputation when no non-null
+  reference values exist.
+
 ## [1.1.2] — 2026-06-01
 
 ### Fixed

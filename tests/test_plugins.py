@@ -30,7 +30,7 @@ class _UpperCasePlugin(BaseRepairPlugin):
     def repair(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[RepairAction]]:
         df = df.copy()
         actions: List[RepairAction] = []
-        for col in df.select_dtypes(include=["object", "str"]).columns:
+        for col in df.select_dtypes(include=["object", "string"]).columns:
             count = df[col].dropna().shape[0]
             df[col] = df[col].str.upper()
             actions.append(

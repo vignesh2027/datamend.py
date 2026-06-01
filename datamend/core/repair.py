@@ -225,20 +225,27 @@ class _NullDetector:
                 df[col] = series.fillna(fill_val)
                 desc = f"Imputed {count} nulls with {strategy}={fill_val:.4g}"
             elif isinstance(series.dtype, pd.CategoricalDtype) or dtype is object or str(dtype) == "string":
-                fill_val = series.mode().iloc[0] if not series.mode().empty else "UNKNOWN"
-                df[col] = series.fillna(fill_val)
-                desc = f"Imputed {count} nulls with mode='{fill_val}'"
+                # Use dropna() so all-null columns don't return None as mode
+                mode_vals = series.dropna().mode()
+                fill_val = mode_vals.iloc[0] if not mode_vals.empty else None
                 strategy = "mode"
+                if fill_val is not None:
+                    df[col] = series.fillna(fill_val)
+                    desc = f"Imputed {count} nulls with mode='{fill_val}'"
+                else:
+                    desc = f"Skipped {count} nulls in all-null column (no reference values)"
             elif pd.api.types.is_datetime64_any_dtype(dtype):
                 fill_val = series.median()
                 df[col] = series.fillna(fill_val)
                 desc = f"Imputed {count} null datetimes with median"
                 strategy = "median"
             else:
-                fill_val = series.mode().iloc[0] if not series.mode().empty else None
-                df[col] = series.fillna(fill_val)
-                desc = f"Imputed {count} nulls with mode"
+                mode_vals = series.dropna().mode()
+                fill_val = mode_vals.iloc[0] if not mode_vals.empty else None
                 strategy = "mode"
+                if fill_val is not None:
+                    df[col] = series.fillna(fill_val)
+                desc = f"Imputed {count} nulls with mode"
 
             actions.append(
                 RepairAction(
